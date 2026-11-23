@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#151916">
+  <meta name="description" content="用 Rapfi 五子棋引擎对弈，支持同屏双人、悔棋、提示和逐手复盘。">
+  <title>五子棋 · 棋室</title>
+  <link rel="icon" type="image/png" href="./favicon.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>棋室</span>
+      <div class="header-actions">
+        <span class="engine-state" id="engine-state" role="status"><i></i><span>Rapfi 加载中</span></span>
+        <button class="button button-header" id="new-game" type="button"><span aria-hidden="true">＋</span> 新对局</button>
+      </div>
+    </div>
+  </header>
+  <main class="container">
+    <section class="intro" aria-labelledby="title">
+      <div>
+        <h1 id="title">五子棋</h1>
+        <p>和 Rapfi AI 过招，或与朋友同屏对弈。</p>
+      </div>
+      <div class="rule" id="rule-badge" aria-label="十五路棋盘，自由规则">
+        <i class="grid-symbol" aria-hidden="true"></i><span>15 × 15</span><span class="rule-separator"></span><span id="rule-name">自由规则</span>
+      </div>
+    </section>
+
+    <div class="game-layout">
+      <section class="panel board-panel" aria-label="对弈棋盘">
+        <div class="players">
+          <div class="player" id="black-player">
+            <i class="stone black" aria-hidden="true"></i>
+            <div><strong id="black-name">你</strong><small>黑棋 · 先手</small></div>
+          </div>
+          <span class="player-divider" aria-hidden="true"></span>
+          <div class="player player-white" id="white-player">
+            <i class="stone white" aria-hidden="true"></i>
+            <div><strong id="white-name">Rapfi</strong><small>白棋 · 后手</small></div>
+          </div>
+        </div>
+        <div class="wood">
+          <div class="coordinates coordinates-top" id="columns" aria-hidden="true"></div>
+          <div class="coordinates coordinates-left" id="rows" aria-hidden="true"></div>
+          <div class="board" id="board" role="group" aria-label="十五路棋盘，方向键移动，回车落子">
+            <div class="grid-lines" aria-hidden="true"></div>
+            <div class="intersections" id="intersections"></div>
+          </div>
+        </div>
+        <div class="board-toolbar">
+          <div class="actions">
+            <button class="button button-subtle" id="undo" type="button">悔棋</button>
+            <button class="button button-subtle" id="hint" type="button">落子提示</button>
+          </div>
+          <label class="switch-label"><input id="numbers" type="checkbox"><span class="switch" aria-hidden="true"></span>显示手数</label>
+        </div>
+      </section>
+
+      <aside class="sidebar" aria-label="棋局操作">
+        <section class="panel status-panel" aria-label="棋局状态">
+          <div class="status-kicker" id="game-stage"><i></i><span>对弈中</span></div>
+          <div class="status-copy" role="status" aria-live="polite" aria-atomic="true">
+            <h2 id="game-title">轮到你落子</h2>
+            <p id="game-description">黑棋先手，落子开始这局棋。</p>
+          </div>
+          <div class="winrate" role="group" aria-label="局面胜率">
+            <div class="winrate-heading"><span>局面胜率</span><span id="winrate-source">Rapfi 评估中</span></div>
+            <div class="winrate-values">
+              <span><i class="stone black" aria-hidden="true"></i>黑 <strong id="black-rate">—</strong></span>
+              <span><strong id="white-rate">—</strong> 白<i class="stone white" aria-hidden="true"></i></span>
+            </div>
+            <div class="winrate-track" id="winrate-track" aria-hidden="true" data-known="false"><i></i></div>
+          </div>
+          <div class="status-actions" id="status-actions" hidden>
+            <button class="button button-primary" id="decline-win" type="button" hidden>主动让一手</button>
+            <button class="button button-subtle" id="accept-win" type="button" hidden>按胜着落子</button>
+            <button class="button button-primary" id="spare" type="button" hidden>让 AI 换一手</button>
+            <button class="button button-subtle" id="win-undo" type="button" hidden>悔棋重下</button>
+            <button class="button button-subtle" id="retry" type="button" hidden>重试引擎</button>
+            <button class="button button-subtle" id="return-live" type="button" hidden>回到最新</button>
+          </div>
+          <p class="action-note" id="action-note" role="status" hidden></p>
+        </section>
+
+        <section class="panel settings-panel" aria-labelledby="settings-title">
+          <h2 id="settings-title">对局设置</h2>
+          <div class="settings-row">
+            <span id="mode-label">模式</span>
+            <div class="segmented" role="group" aria-labelledby="mode-label">
+              <button type="button" data-mode="ai" aria-pressed="true">人机</button>
+              <button type="button" data-mode="local" aria-pressed="false">双人</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label for="renju">黑棋禁手</label>
+            <label class="switch-label">
+              <input id="renju" type="checkbox" aria-describedby="renju-note">
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+          </div>
+          <p class="settings-note" id="renju-note" hidden>双三、双四和长连禁手以 × 标出。</p>
+          <div class="settings-row" id="side-row">
+            <span id="side-label">执子</span>
+            <div class="segmented" role="group" aria-labelledby="side-label">
+              <button type="button" data-side="black" aria-pressed="true"><i class="stone black" aria-hidden="true"></i>黑棋</button>
+              <button type="button" data-side="white" aria-pressed="false"><i class="stone white" aria-hidden="true"></i>白棋</button>
+            </div>
+          </div>
+          <div class="settings-row" id="difficulty-row">
+            <label for="difficulty">AI 难度</label>
+            <div class="select-wrap">
+              <select id="difficulty">
+                <option value="easy">入门</option>
+                <option value="normal" selected>标准</option>
+                <option value="hard">进阶</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel history-panel" aria-labelledby="history-title">
+          <div class="history-heading">
+            <h2 id="history-title">棋谱</h2><span id="move-count">0 手</span>
+          </div>
+          <div class="history-empty" id="history-empty">
+            <i class="grid-symbol" aria-hidden="true"></i><span>落子后可逐手复盘</span>
+          </div>
+          <ol class="move-list" id="move-list" aria-label="落子记录" hidden></ol>
+          <div class="history-controls">
+            <div class="review-controls" role="group" aria-label="逐手复盘">
+              <button class="button button-icon" id="first-move" type="button" aria-label="复盘到开局" title="开局"><i class="review-icon first" aria-hidden="true"></i></button>
+              <button class="button button-icon" id="prev-move" type="button" aria-label="复盘上一手" title="上一手"><i class="review-icon prev" aria-hidden="true"></i></button>
+              <button class="button button-icon" id="next-move" type="button" aria-label="复盘下一手" title="下一手"><i class="review-icon next" aria-hidden="true"></i></button>
+              <button class="button button-icon" id="last-move" type="button" aria-label="返回最新一步" title="最新一步"><i class="review-icon last" aria-hidden="true"></i></button>
+            </div>
+            <div class="file-controls">
+              <button class="button button-text" id="import" type="button">导入</button>
+              <button class="button button-text" id="export" type="button">导出</button>
+              <input id="record-file" type="file" accept=".json,application/json" hidden>
+            </div>
+          </div>
+          <p class="action-note" id="file-note" role="status" hidden></p>
+        </section>
+      </aside>
+    </div>
+
+    <footer class="footer">
+      <span id="save-state">棋局自动保存于此浏览器</span>
+      <a href="./engine/source.html" target="_blank" rel="noopener">Rapfi 引擎与许可证</a>
+    </footer>
+  </main>
+
+  <dialog id="replace-dialog" aria-labelledby="dialog-title">
+    <form method="dialog">
+      <h2 id="dialog-title">开始新对局？</h2>
+      <p id="dialog-description">当前棋局将被清空。你可以先导出棋谱。</p>
+      <div class="dialog-actions">
+        <button class="button button-subtle" value="cancel" autofocus>取消</button>
+        <button class="button button-primary" id="dialog-confirm" value="confirm">开始新对局</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
